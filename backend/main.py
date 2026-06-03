@@ -1,3 +1,15 @@
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+import os
+import sys
+
+# Ensure core is in path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from core.chord_engine import analyze_chords
+from core.rhythm_engine import analyze_rhythm
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,62 +25,59 @@ def read_root():
 
 @app.post("/analyze/file")
 async def analyze_file(file: UploadFile = File(...)):
-    # Save file temporarily
     file_location = f"temp_{file.filename}"
+
     with open(file_location, "wb+") as file_object:
         file_object.write(file.file.read())
-    
-    # Process audio
+
     try:
-    print("STEP 1: FILE RECEIVED")
+        print("STEP 1: FILE RECEIVED")
 
-    print("STEP 2: STARTING CHORD ANALYSIS")
-    chords = analyze_chords(file_location)
+        print("STEP 2: STARTING CHORD ANALYSIS")
+        chords = analyze_chords(file_location)
 
-    print("STEP 3: CHORD ANALYSIS COMPLETE")
+        print("STEP 3: CHORD ANALYSIS COMPLETE")
 
-    print("STEP 4: STARTING RHYTHM ANALYSIS")
-    rhythm = analyze_rhythm(file_location)
+        print("STEP 4: STARTING RHYTHM ANALYSIS")
+        rhythm = analyze_rhythm(file_location)
 
-    print("STEP 5: RHYTHM ANALYSIS COMPLETE")
+        print("STEP 5: RHYTHM ANALYSIS COMPLETE")
 
-except Exception as e:
-    print("ERROR:", str(e))
-    os.remove(file_location)
-    return {"error": str(e)}
-    
-    os.remove(file_location)
-    
-    # Simple compression for chord timeline to avoid sending huge arrays
+    except Exception as e:
+        print("ERROR:", str(e))
+
+        if os.path.exists(file_location):
+            os.remove(file_location)
+
+        return {"error": str(e)}
+
+    if os.path.exists(file_location):
+        os.remove(file_location)
+
     compressed_chords = []
+
     if chords:
         current_chord = chords[0]["chord"]
         start_time = chords[0]["time"]
+
         for i in range(1, len(chords)):
             if chords[i]["chord"] != current_chord:
                 compressed_chords.append({
                     "chord": current_chord,
                     "start_time": start_time,
-                    "end_time": chords[i-1]["time"]
+                    "end_time": chords[i - 1]["time"]
                 })
+
                 current_chord = chords[i]["chord"]
                 start_time = chords[i]["time"]
+
         compressed_chords.append({
             "chord": current_chord,
             "start_time": start_time,
-            "end_time": chords[-1]["time"]from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-import os
-import sys
-
-# Ensure core is in path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from core.chord_engine import analyze_chords
-from core.rhythm_engine import analyze_rhythm
-
-app = FastAPI()
-
+            "end_time": chords[-1]["time"]
         })
-    
-    return {"chords": compressed_chords, "rhythm": rhythm}
+
+    return {
+        "chords": compressed_chords,
+        "rhythm": rhythm
+    }
