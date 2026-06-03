@@ -1,15 +1,3 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-import os
-import sys
-
-# Ensure core is in path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from core.chord_engine import analyze_chords
-from core.rhythm_engine import analyze_rhythm
-
-app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,11 +20,22 @@ async def analyze_file(file: UploadFile = File(...)):
     
     # Process audio
     try:
-        chords = analyze_chords(file_location)
-        rhythm = analyze_rhythm(file_location)
-    except Exception as e:
-        os.remove(file_location)
-        return {"error": str(e)}
+    print("STEP 1: FILE RECEIVED")
+
+    print("STEP 2: STARTING CHORD ANALYSIS")
+    chords = analyze_chords(file_location)
+
+    print("STEP 3: CHORD ANALYSIS COMPLETE")
+
+    print("STEP 4: STARTING RHYTHM ANALYSIS")
+    rhythm = analyze_rhythm(file_location)
+
+    print("STEP 5: RHYTHM ANALYSIS COMPLETE")
+
+except Exception as e:
+    print("ERROR:", str(e))
+    os.remove(file_location)
+    return {"error": str(e)}
     
     os.remove(file_location)
     
@@ -57,7 +56,19 @@ async def analyze_file(file: UploadFile = File(...)):
         compressed_chords.append({
             "chord": current_chord,
             "start_time": start_time,
-            "end_time": chords[-1]["time"]
+            "end_time": chords[-1]["time"]from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+import os
+import sys
+
+# Ensure core is in path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from core.chord_engine import analyze_chords
+from core.rhythm_engine import analyze_rhythm
+
+app = FastAPI()
+
         })
     
     return {"chords": compressed_chords, "rhythm": rhythm}
