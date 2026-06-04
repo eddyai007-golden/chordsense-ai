@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
+import time
 
 # Ensure core is in path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -33,15 +34,27 @@ async def analyze_file(file: UploadFile = File(...)):
     try:
         print("STEP 1: FILE RECEIVED")
 
+        chord_start = time.time()
+
         print("STEP 2: STARTING CHORD ANALYSIS")
         chords = analyze_chords(file_location)
 
-        print("STEP 3: CHORD ANALYSIS COMPLETE")
+        print(
+            "STEP 3: CHORD ANALYSIS COMPLETE IN",
+            round(time.time() - chord_start, 2),
+            "SECONDS"
+        )
+
+        rhythm_start = time.time()
 
         print("STEP 4: STARTING RHYTHM ANALYSIS")
         rhythm = analyze_rhythm(file_location)
 
-        print("STEP 5: RHYTHM ANALYSIS COMPLETE")
+        print(
+            "STEP 5: RHYTHM ANALYSIS COMPLETE IN",
+            round(time.time() - rhythm_start, 2),
+            "SECONDS"
+        )
 
     except Exception as e:
         print("ERROR:", str(e))
