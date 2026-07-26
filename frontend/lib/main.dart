@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
+import 'utils/time_converter.dart';
 
 void main() {
   runApp(const ChordSenseApp());
@@ -43,10 +44,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final AudioRecorder _record = AudioRecorder();
   
-  bool _isRecording = false;
-  bool _isPlaying = false;
-  String? _audioPath;
-  Uint8List? _webAudioBytes;
+bool _isRecording = false;
+bool _isPlaying = false;
+String? _audioPath;
+Uint8List? _webAudioBytes;
+
+final TextEditingController _startController =
+    TextEditingController(text: "00:00");
+
+final TextEditingController _endController =
+    TextEditingController(text: "00:10");
 
   @override
   void initState() {
@@ -64,6 +71,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _audioPlayer.dispose();
     _record.dispose();
+    _startController.dispose();
+    _endController.dispose();
     super.dispose();
   }
 
@@ -114,8 +123,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _analyzeAudio() async {
+    print("I ENTERED _analyzeAudio()");
+    print("kIsWeb = $kIsWeb");
+print("_webAudioBytes is null = ${_webAudioBytes == null}");
+print("_audioPath = $_audioPath");
     if (_audioPath == null && _webAudioBytes == null) {
       _showError('Please upload or record an audio file first.');
+      return;
+    }
+
+    int startSeconds;
+    int endSeconds;
+    try {
+      startSeconds = parseTime(_startController.text).inSeconds;
+      endSeconds = parseTime(_endController.text).inSeconds;
+    } catch (e) {
+      _showError('Please enter valid Start/End times in mm:ss format.');
+      return;
+    }
+
+    if (endSeconds <= startSeconds) {
+      _showError('End Time must be after Start Time.');
       return;
     }
 
@@ -126,16 +154,42 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
     String baseUrl = 'https://chordsense-ai-backend.onrender.com';
       var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/analyze/file'));
-      
+
+      request.fields['start_time'] = startSeconds.toString();
+      request.fields['end_time'] = endSeconds.toString();
+
       if (kIsWeb && _webAudioBytes != null) {
-         request.files.add(http.MultipartFile.fromBytes('file', _webAudioBytes!, filename: _audioPath ?? 'audio.mp3'));
-      } else {
-         request.files.add(await http.MultipartFile.fromPath('file', _audioPath!));
-      }
-      
+  print("ADDING WEB FILE");
+
+  request.files.add(
+    http.MultipartFile.fromBytes(
+      'file',
+      _webAudioBytes!,
+      filename: _audioPath ?? 'audio.mp3',
+    ),
+  );
+
+  print("WEB FILE ADDED");
+
+} else {
+
+  print("ADDING LOCAL FILE");
+
+  request.files.add(
+    await http.MultipartFile.fromPath(
+      'file',
+      _audioPath!,
+    ),
+  );
+
+  print("LOCAL FILE ADDED");
+}
+      print("SENDING REQUEST...");
       var response = await request.send();
+      print("STATUS CODE = ${response.statusCode}");
       if (response.statusCode == 200) {
         var responseData = await response.stream.bytesToString();
+        print(responseData);
         var jsonResult = jsonDecode(responseData);
         
         if (!mounted) return;
@@ -214,6 +268,57 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         children: [
                           Text(_audioPath != null ? "Audio Ready" : "No Audio Selected", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 20),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _startController,
+                                  keyboardType: TextInputType.datetime,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'Start Time (mm:ss)',
+                                    labelStyle: const TextStyle(color: Colors.white70),
+                                    hintText: '00:00',
+                                    hintStyle: const TextStyle(color: Colors.white38),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: Colors.deepPurpleAccent),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: _endController,
+                                  keyboardType: TextInputType.datetime,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'End Time (mm:ss)',
+                                    labelStyle: const TextStyle(color: Colors.white70),
+                                    hintText: '00:10',
+                                    hintStyle: const TextStyle(color: Colors.white38),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: Colors.deepPurpleAccent),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 20),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
