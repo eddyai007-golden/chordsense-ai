@@ -34,6 +34,9 @@ async def analyze_file(
     start_time: float = Form(0),
     end_time: float = Form(10)
 ):
+    print("ENDPOINT HIT")
+    print("Filename:", file.filename)
+    print("Content type:", file.content_type)
 
     file_location = f"temp_{file.filename}"
 
